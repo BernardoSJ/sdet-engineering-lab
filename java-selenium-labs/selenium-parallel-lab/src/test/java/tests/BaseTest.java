@@ -9,11 +9,14 @@ import pages.LoginPage;
 public class BaseTest {
 
     protected static WebDriver driver;
+    protected LoginPage loginPage;
 
     @BeforeMethod
     public void setUp() {
         driver = new ChromeDriver();
-        LoginPage loginPage = new LoginPage(driver);
+        driver.get("https://www.saucedemo.com/");
+        driver.manage().window().maximize();
+        loginPage = new LoginPage(driver);
     }
 
     @AfterMethod

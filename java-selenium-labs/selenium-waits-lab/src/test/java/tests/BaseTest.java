@@ -4,27 +4,25 @@ import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
-import pages.SeleniumWaitsPage;
+import pages.DynamicPage;
 
 public class BaseTest {
 
-    private static WebDriver driver;
-    protected SeleniumWaitsPage seleniumWaitsPage;
+    protected WebDriver driver;
+    protected DynamicPage dynamicPage;
 
     @BeforeMethod
     public void setUp() {
-
-        driver = new ChromeDriver();;
-        seleniumWaitsPage = new SeleniumWaitsPage(driver);
-        driver.get("https://www.selenium.dev/documentation/webdriver/support_features/expected_conditions/");
-        driver.manage().window().maximize();
-
-
+        driver = new ChromeDriver();
+        driver.get("https://www.selenium.dev/selenium/web/dynamic.html");
+        dynamicPage = new DynamicPage(driver);
     }
 
     @AfterMethod
     public void tearDown() {
-        driver.quit();
+        if (driver != null) {
+            driver.quit();
+        }
     }
 
 }

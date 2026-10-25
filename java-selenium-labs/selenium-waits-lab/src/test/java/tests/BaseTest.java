@@ -6,6 +6,8 @@ import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import pages.DynamicPage;
 
+import java.time.Duration;
+
 public class BaseTest {
 
     protected WebDriver driver;
@@ -14,6 +16,9 @@ public class BaseTest {
     @BeforeMethod
     public void setUp() {
         driver = new ChromeDriver();
+        /*driver.manage()
+                .timeouts()
+                .implicitlyWait(Duration.ofSeconds(10));*/
         driver.get("https://www.selenium.dev/selenium/web/dynamic.html");
         dynamicPage = new DynamicPage(driver);
     }

@@ -20,6 +20,7 @@ public class BaseTest {
                 .timeouts()
                 .implicitlyWait(Duration.ofSeconds(10));*/
         driver.get("https://www.selenium.dev/selenium/web/dynamic.html");
+
         dynamicPage = new DynamicPage(driver);
     }
 

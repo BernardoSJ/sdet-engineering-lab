@@ -3,16 +3,16 @@ package pages;
 import org.openqa.selenium.By;
 import org.openqa.selenium.NoSuchElementException;
 import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.FluentWait;
 import org.openqa.selenium.support.ui.Wait;
-import org.openqa.selenium.support.ui.WebDriverWait;
+import utils.WaitUtility;
 
 import java.time.Duration;
 
 public class DynamicPage {
 
-    private WebDriver driver;
+    private final WebDriver driver;
+    private final WaitUtility waitUtiliy;
 
     private By addBoxButton = By.id("adder");
     private By addedBox = By.id("box0");
@@ -20,14 +20,10 @@ public class DynamicPage {
     private By revealInputButton = By.id("reveal");
     private By revealedInput = By.id("revealed");
 
-    private WebDriverWait wait;
 
     public DynamicPage(WebDriver driver) {
         this.driver = driver;
-        this.wait = new WebDriverWait(
-                driver,
-                Duration.ofSeconds(2)
-        );
+        waitUtiliy = new WaitUtility(driver);
     }
 
     public DynamicPage clickAddBoxButton() {
@@ -36,10 +32,7 @@ public class DynamicPage {
     }
 
     public boolean isAddedBoxPresent() {
-        return wait.until(
-                ExpectedConditions
-                        .presenceOfElementLocated(addedBox)
-        ) != null;
+        return waitUtiliy.waitForPresence(addedBox) != null;
     }
 
     public DynamicPage clickRevealInputButton() {
@@ -48,10 +41,7 @@ public class DynamicPage {
     }
 
     public boolean isRevealedInputVisible() {
-        return wait.until(
-                ExpectedConditions
-                        .visibilityOfElementLocated(revealedInput)
-        ) != null;
+        return waitUtiliy.waitForVisibility(revealedInput) != null;
     }
 
     public boolean isAddedBoxPresentWithFluentWait() {

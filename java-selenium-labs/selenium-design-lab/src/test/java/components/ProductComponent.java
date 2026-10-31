@@ -28,4 +28,8 @@ public class ProductComponent {
         return root.findElement(price).getText();
     }
 
+    public void addToCart() {
+        root.findElement(addToCartButton).click();
+    }
+
 }

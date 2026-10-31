@@ -1,5 +1,6 @@
 package pages;
 
+import components.HeaderComponent;
 import components.ProductComponent;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
@@ -15,13 +16,20 @@ public class InventoryPage {
     private final By productsLabel = By.xpath("//span[@class='title']");
     private final List<ProductComponent> products = new ArrayList<>();
     private final By inventoryElements = By.xpath("//div[@data-test='inventory-item']");
+    private final HeaderComponent header;
 
     public InventoryPage(WebDriver driver){
         this.driver = driver;
+        this.header = new HeaderComponent(driver);
+
         List<WebElement> elements = driver.findElements(inventoryElements);
         for (WebElement element : elements) {
             products.add(new ProductComponent(element));
         }
+    }
+
+    public HeaderComponent getHeader() {
+        return header;
     }
 
     public int getNumberOfProducts(){
@@ -38,12 +46,9 @@ public class InventoryPage {
     }
 
     public Optional<ProductComponent> getProductByName(String productName){
-        for (ProductComponent product : products) {
-            if (product.getName().equals(productName)) {
-                return Optional.of(product);
-            }
-        }
-        return Optional.empty();
+        return products.stream()
+                .filter(p -> p.getName().equals(productName))
+                .findFirst();
     }
 
 }

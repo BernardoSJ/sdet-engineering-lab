@@ -44,4 +44,15 @@ public class InventoryTests extends BaseTest {
         Assert.assertEquals(product.get().getName(), "Sauce Labs Backpack");
 
     }
+
+    @Test(description = "Add a product to the cart and verify the cart item count")
+    public void addProductToCartAndVerifyCount() {
+        InventoryPage inventoryPage = loginPage.logInWithValidCredentials("standard_user", "secret_sauce");
+        ProductComponent backpack = inventoryPage.getProductByName("Sauce Labs Backpack")
+                .orElseThrow(() -> new AssertionError("Product not found"));
+
+        backpack.addToCart();
+        Assert.assertEquals(inventoryPage.getHeader().getCartItemCount(), 1, "Cart item count is incorrect");
+    }
+
 }

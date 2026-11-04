@@ -1,6 +1,7 @@
 package components;
 
 import org.openqa.selenium.By;
+import org.openqa.selenium.NoSuchElementException;
 import org.openqa.selenium.WebDriver;
 import pages.CartPage;
 
@@ -21,7 +22,12 @@ public class HeaderComponent {
     }
 
     public int getCartItemCount() {
-        return Integer.parseInt(driver.findElement(cartBadge).getText());
+        try{
+            String countText = driver.findElement(cartBadge).getText();
+            return Integer.parseInt(countText);
+        } catch (NoSuchElementException e) {
+            return 0;
+        }
     }
 
 }

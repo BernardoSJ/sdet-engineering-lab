@@ -10,16 +10,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-public class InventoryPage {
+public class InventoryPage extends BasePage {
 
-    private final WebDriver driver;
     private final By productsLabel = By.xpath("//span[@class='title']");
     private final List<ProductComponent> products = new ArrayList<>();
     private final By inventoryElements = By.xpath("//div[@data-test='inventory-item']");
     private final HeaderComponent header;
 
     public InventoryPage(WebDriver driver){
-        this.driver = driver;
+        super(driver);
         this.header = new HeaderComponent(driver);
 
         List<WebElement> elements = driver.findElements(inventoryElements);

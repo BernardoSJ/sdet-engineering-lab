@@ -3,6 +3,7 @@ package tests;
 import components.ProductComponent;
 import org.testng.Assert;
 import org.testng.annotations.Test;
+import pages.CartPage;
 import pages.InventoryPage;
 
 import java.util.List;
@@ -45,7 +46,7 @@ public class InventoryTests extends BaseTest {
 
     }
 
-    @Test(description = "Add a product to the cart and verify the cart item count")
+    @Test(description = "Add a product to the cart, verify the cart item count and check if the product is present in the cart")
     public void addProductToCartAndVerifyCount() {
         InventoryPage inventoryPage = loginPage.logInWithValidCredentials("standard_user", "secret_sauce");
         ProductComponent backpack = inventoryPage.getProductByName("Sauce Labs Backpack")
@@ -53,6 +54,9 @@ public class InventoryTests extends BaseTest {
 
         backpack.addToCart();
         Assert.assertEquals(inventoryPage.getHeader().getCartItemCount(), 1, "Cart item count is incorrect");
+
+        CartPage cartPage = inventoryPage.getHeader().openCart();
+        Assert.assertTrue(cartPage.containsProduct("Sauce Labs Backpack"), "Product not found in the cart");
     }
 
 }

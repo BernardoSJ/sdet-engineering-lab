@@ -84,4 +84,35 @@ public class BookingTests {
 
     }
 
+    @Test(description = "Get a non-existent booking and verify the response")
+    public void getNonExistentBooking() {
+        int nonExistentBookingId = 999999;
+
+        Response response = given()
+                .baseUri("https://restful-booker.herokuapp.com")
+                .accept("text/plain")
+                .pathParam("bookingid", nonExistentBookingId)
+                .when()
+                .get("/booking/{bookingid}");
+
+        Assert.assertEquals(response.getStatusCode(), 404, "Expected status code 404 for non-existent booking but got " + response.getStatusCode());
+        Assert.assertEquals(response.getContentType(), "text/plain; charset=utf-8", "Expected text/plain response for non-existent booking");
+        Assert.assertEquals(response.getBody().asString(), "Not Found", "Expected 'Not Found' message for non-existent booking");
+    }
+
+    @Test(description = "Get deliberate contract failure and verify the response")
+    public void getDeliberateContractFailure() {
+        Response response = given()
+                .baseUri("https://restful-booker.herokuapp.com")
+                .header("Content-Type", "application/json")
+                .accept("application/json")
+                .when()
+                .get("/booking");
+        Assert.assertEquals(response.getStatusCode(), 200, "Expected status code 200 but got " + response.getStatusCode());
+
+        List<Map<String, Object>> bookings = response.jsonPath().getList("$");
+        Assert.assertFalse(bookings.isEmpty(), "Expected at least one booking");
+
+        Assert.assertTrue(bookings.get(0).containsKey("customerId"), "Expected customerId in booking response");
+    }
 }

@@ -1,10 +1,14 @@
 package tests;
 
 import config.ApiSpecifications;
+import io.restassured.http.ContentType;
 import io.restassured.path.json.JsonPath;
 import io.restassured.response.Response;
 import io.restassured.specification.RequestSpecification;
 import io.restassured.specification.ResponseSpecification;
+import models.BookingCreatedResponse;
+import models.BookingDates;
+import models.BookingRequest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -89,6 +93,36 @@ public class BookingApiTests {
         Assert.assertTrue(name instanceof String, "Missing or invalid firstname");
         Assert.assertTrue(lastName instanceof String, "Missing or invalid lastname");
         Assert.assertTrue(totalPrice instanceof Number, "Missing or invalid totalprice");
+    }
+
+    @Test(description = "Create a new booking")
+    public void createNewBooking(){
+        BookingDates bookingDates = new BookingDates("2026-12-10", "2026-12-15");
+        BookingRequest bookingRequest = new BookingRequest("Alex",
+                "Smith", 250, true, bookingDates, "Breakfast");
+
+        Response response = given()
+                .spec(requestSpecification)
+                .contentType(ContentType.JSON)
+                .body(bookingRequest)
+                .when()
+                .post("/booking")
+                .then()
+                .spec(responseSpecification).extract().response();
+
+        Object bookingId = response.jsonPath().get("bookingid");
+        Assert.assertTrue(bookingId instanceof Number, "Missing or invalid bookingid");
+        Assert.assertTrue(((Number) bookingId).intValue() > 0, "Booking ID must be positive");
+
+        BookingCreatedResponse createdBooking = response.as(BookingCreatedResponse.class);
+        Assert.assertEquals(createdBooking.getBooking().getFirstname(), bookingRequest.getFirstname());
+        Assert.assertEquals(createdBooking.getBooking().getLastname(), bookingRequest.getLastname());
+        Assert.assertEquals(createdBooking.getBooking().getTotalprice(), bookingRequest.getTotalprice());
+        Assert.assertEquals(createdBooking.getBooking().getFirstname(), bookingRequest.getFirstname());
+        Assert.assertEquals(createdBooking.getBooking().isDepositpaid(), bookingRequest.isDepositpaid());
+        Assert.assertEquals(createdBooking.getBooking().getBookingdates().getCheckin(), bookingRequest.getBookingdates().getCheckin());
+        Assert.assertEquals(createdBooking.getBooking().getBookingdates().getCheckout(), bookingRequest.getBookingdates().getCheckout());
+        Assert.assertEquals(createdBooking.getBooking().getAdditionalneeds(), bookingRequest.getAdditionalneeds());
     }
 
 }

@@ -1,11 +1,9 @@
 package tests;
 
+import clients.BookingClient;
 import config.ApiSpecifications;
-import io.restassured.http.ContentType;
 import io.restassured.path.json.JsonPath;
 import io.restassured.response.Response;
-import io.restassured.specification.RequestSpecification;
-import io.restassured.specification.ResponseSpecification;
 import models.BookingCreatedResponse;
 import models.BookingDates;
 import models.BookingRequest;
@@ -16,28 +14,24 @@ import org.testng.annotations.Test;
 import java.util.List;
 import java.util.Map;
 
-import static io.restassured.RestAssured.given;
 
 public class BookingApiTests {
 
-    RequestSpecification requestSpecification;
-    ResponseSpecification responseSpecification;
+    BookingClient bookingClient;
+    ApiSpecifications apiSpecifications;
 
     @BeforeMethod
     public void setUpRequestAndResponse(){
-        ApiSpecifications api = new ApiSpecifications();
-        requestSpecification = api.setUpRequest();
-        responseSpecification = api.successfulJsonResponse();
+        apiSpecifications = new ApiSpecifications();
+        bookingClient = new BookingClient(apiSpecifications.setUpRequest());
     }
 
     @Test(description = "Get all bookings and verify the response")
     public void getAllBookings(){
-        Response response = given()
-                .spec(requestSpecification)
-                .when()
-                .get("/booking")
+        Response response = bookingClient.getAllBookings()
                 .then()
-                .spec(responseSpecification).extract().response();
+                .spec(apiSpecifications.successfulJsonResponse())
+                .extract().response();
 
 
         List<Map<String, Object>> bookings = response.jsonPath().getList("$");
@@ -51,13 +45,10 @@ public class BookingApiTests {
 
     @Test(description = "Get a specific booking and verify the response")
     public void getSpecificBooking(){
-        Response response = given()
-                .spec(requestSpecification)
-                .when()
-                .get("/booking")
+        Response response = bookingClient.getAllBookings()
                 .then()
-                .spec(responseSpecification).extract().response();
-
+                .spec(apiSpecifications.successfulJsonResponse())
+                .extract().response();
 
         List<Map<String, Object>> bookings = response.jsonPath().getList("$");
         Assert.assertNotNull(bookings, "Missing bookings list");
@@ -67,13 +58,10 @@ public class BookingApiTests {
         Assert.assertTrue(id instanceof Number, "Invalid booking ID");
         int bookingId = ((Number) id).intValue();
 
-        Response specificBookingResponse = given()
-                .spec(requestSpecification)
-                .pathParam("bookingid", bookingId)
-                .when()
-                .get("/booking/{bookingid}")
+        Response specificBookingResponse = bookingClient.getBookingById(bookingId)
                 .then()
-                .spec(responseSpecification).extract().response();
+                .spec(apiSpecifications.successfulJsonResponse())
+                .extract().response();
 
         JsonPath jsonPath = specificBookingResponse.jsonPath();
 
@@ -101,28 +89,27 @@ public class BookingApiTests {
         BookingRequest bookingRequest = new BookingRequest("Alex",
                 "Smith", 250, true, bookingDates, "Breakfast");
 
-        Response response = given()
-                .spec(requestSpecification)
-                .contentType(ContentType.JSON)
-                .body(bookingRequest)
-                .when()
-                .post("/booking")
+        Response response = bookingClient.createBooking(bookingRequest)
                 .then()
-                .spec(responseSpecification).extract().response();
+                .spec(apiSpecifications.successfulJsonResponse())
+                .extract().response();
 
-        Object bookingId = response.jsonPath().get("bookingid");
-        Assert.assertTrue(bookingId instanceof Number, "Missing or invalid bookingid");
-        Assert.assertTrue(((Number) bookingId).intValue() > 0, "Booking ID must be positive");
 
         BookingCreatedResponse createdBooking = response.as(BookingCreatedResponse.class);
-        Assert.assertEquals(createdBooking.getBooking().getFirstname(), bookingRequest.getFirstname());
-        Assert.assertEquals(createdBooking.getBooking().getLastname(), bookingRequest.getLastname());
-        Assert.assertEquals(createdBooking.getBooking().getTotalprice(), bookingRequest.getTotalprice());
-        Assert.assertEquals(createdBooking.getBooking().getFirstname(), bookingRequest.getFirstname());
-        Assert.assertEquals(createdBooking.getBooking().isDepositpaid(), bookingRequest.isDepositpaid());
-        Assert.assertEquals(createdBooking.getBooking().getBookingdates().getCheckin(), bookingRequest.getBookingdates().getCheckin());
-        Assert.assertEquals(createdBooking.getBooking().getBookingdates().getCheckout(), bookingRequest.getBookingdates().getCheckout());
-        Assert.assertEquals(createdBooking.getBooking().getAdditionalneeds(), bookingRequest.getAdditionalneeds());
+
+        Assert.assertNotNull(createdBooking.getBooking(), "Created booking details are missing");
+
+        BookingRequest actualBooking = createdBooking.getBooking();
+        Assert.assertTrue(createdBooking.getBookingid() > 0, "Booking ID must be positive");
+        Assert.assertEquals(actualBooking.getFirstname(), bookingRequest.getFirstname());
+        Assert.assertEquals(actualBooking.getLastname(), bookingRequest.getLastname());
+        Assert.assertEquals(actualBooking.getTotalprice(), bookingRequest.getTotalprice());
+        Assert.assertEquals(actualBooking.isDepositpaid(), bookingRequest.isDepositpaid());
+        Assert.assertEquals(actualBooking.getBookingdates().getCheckin(), bookingRequest.getBookingdates().getCheckin());
+        Assert.assertEquals(actualBooking.getBookingdates().getCheckout(), bookingRequest.getBookingdates().getCheckout());
+        Assert.assertEquals(actualBooking.getAdditionalneeds(), bookingRequest.getAdditionalneeds());
+
+
     }
 
 }

@@ -112,4 +112,39 @@ public class BookingApiTests {
 
     }
 
+    @Test(description = "Create and retrieve booking")
+    public void createAndRetrieveBooking(){
+        BookingDates bookingDates = new BookingDates("2026-12-10", "2026-12-15");
+        BookingRequest bookingRequest = new BookingRequest("Alex",
+                "Smith", 250, true, bookingDates, "Breakfast");
+
+        Response bookingCreated = bookingClient.createBooking(bookingRequest)
+                .then()
+                .spec(apiSpecifications.successfulJsonResponse())
+                .extract().response();
+
+        BookingCreatedResponse bookingCreatedResponse = bookingCreated.as(BookingCreatedResponse.class);
+        int createdBookingId = bookingCreatedResponse.getBookingid();
+
+        Assert.assertTrue(createdBookingId > 0, "Invalid booking ID returned after creation");
+
+        Response retrieveCreatedBooking = bookingClient.getBookingById(createdBookingId)
+                .then()
+                .spec(apiSpecifications.successfulJsonResponse())
+                .extract().response();
+
+        BookingRequest retrievedBooking = retrieveCreatedBooking.as(BookingRequest.class);
+        Assert.assertNotNull(retrievedBooking, "Retrieved booking could not be deserialized");
+        Assert.assertNotNull(retrievedBooking.getBookingdates(), "Retrieved booking dates are missing");
+
+        Assert.assertEquals(retrievedBooking.getFirstname(), bookingRequest.getFirstname());
+        Assert.assertEquals(retrievedBooking.getLastname(), bookingRequest.getLastname());
+        Assert.assertEquals(retrievedBooking.getTotalprice(), bookingRequest.getTotalprice());
+        Assert.assertEquals(retrievedBooking.isDepositpaid(), bookingRequest.isDepositpaid());
+        Assert.assertEquals(retrievedBooking.getBookingdates().getCheckin(), bookingRequest.getBookingdates().getCheckin());
+        Assert.assertEquals(retrievedBooking.getBookingdates().getCheckout(), bookingRequest.getBookingdates().getCheckout());
+        Assert.assertEquals(retrievedBooking.getAdditionalneeds(), bookingRequest.getAdditionalneeds());
+
+    }
+
 }

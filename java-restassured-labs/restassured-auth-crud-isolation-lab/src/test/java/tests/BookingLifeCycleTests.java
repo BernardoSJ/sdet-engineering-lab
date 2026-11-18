@@ -1,9 +1,12 @@
 package tests;
 
+import clients.AuthClient;
 import clients.BookingClient;
 import config.ApiSpecifications;
 import io.restassured.path.json.JsonPath;
 import io.restassured.response.Response;
+import io.restassured.specification.RequestSpecification;
+import models.AuthPayload;
 import models.BookingCreatedResponse;
 import models.BookingDates;
 import models.BookingRequest;
@@ -17,13 +20,16 @@ import java.util.Map;
 
 public class BookingLifeCycleTests {
 
+    AuthClient authClient;
     BookingClient bookingClient;
     ApiSpecifications apiSpecifications;
 
     @BeforeMethod
     public void setUpRequestAndResponse(){
         apiSpecifications = new ApiSpecifications();
-        bookingClient = new BookingClient(apiSpecifications.setUpRequest());
+        RequestSpecification requestSpecification = apiSpecifications.setUpRequest();
+        bookingClient = new BookingClient(requestSpecification);
+        authClient = new AuthClient(requestSpecification);
     }
 
     @Test(description = "Get all bookings and verify the response")
@@ -145,6 +151,60 @@ public class BookingLifeCycleTests {
         Assert.assertEquals(retrievedBooking.getBookingdates().getCheckout(), bookingRequest.getBookingdates().getCheckout());
         Assert.assertEquals(retrievedBooking.getAdditionalneeds(), bookingRequest.getAdditionalneeds());
 
+    }
+
+    @Test(description = "Update an existing booking")
+    public void updateExistingBooking(){
+        BookingDates initialDates = new BookingDates("2026-12-10", "2026-12-15");
+        BookingDates updatedDates = new BookingDates("2026-12-12", "2026-12-18");
+
+        BookingRequest initialBookingRequest = new BookingRequest("Alex",
+                "Smith", 250, true, initialDates, "Breakfast");
+        BookingRequest updatedBookingRequest = new BookingRequest("Daniel",
+                "Johnson", 450, false, updatedDates, "Parking");
+
+        AuthPayload authPayload = new AuthPayload("admin", "password123");
+        String token = authClient.authenticate(authPayload)
+                .then()
+                .spec(apiSpecifications.successfulJsonResponse())
+                .extract().response().jsonPath().getString("token");
+
+        Assert.assertNotNull(token,  "Authentication token is missing");
+        Assert.assertFalse(token.isBlank(), "Authentication token is blank");
+
+        Response bookingCreated = bookingClient.createBooking(initialBookingRequest)
+                .then()
+                .spec(apiSpecifications.successfulJsonResponse())
+                .extract().response();
+
+        BookingCreatedResponse bookingCreatedResponse = bookingCreated.as(BookingCreatedResponse.class);
+        int createdBookingId = bookingCreatedResponse.getBookingid();
+        Assert.assertTrue(createdBookingId > 0, "Invalid booking ID returned after creation");
+
+        Response updatedBooking = bookingClient.updateBooking(createdBookingId, updatedBookingRequest, token)
+                .then()
+                .spec(apiSpecifications.successfulJsonResponse())
+                .extract().response();
+
+        BookingRequest retrievedUpdatedBooking = updatedBooking.as(BookingRequest.class);
+
+        Response retrievedBooking = bookingClient.getBookingById(createdBookingId)
+                .then()
+                .spec(apiSpecifications.successfulJsonResponse())
+                .extract().response();
+
+        BookingRequest updatedBookingResponse = retrievedBooking.as(BookingRequest.class);
+
+        Assert.assertNotNull(retrievedUpdatedBooking, "Retrieved booking could not be deserialized");
+        Assert.assertNotNull(retrievedUpdatedBooking.getBookingdates(), "Retrieved booking dates are missing");
+
+        Assert.assertEquals(updatedBookingRequest.getFirstname(), updatedBookingResponse.getFirstname());
+        Assert.assertEquals(updatedBookingRequest.getLastname(), updatedBookingResponse.getLastname());
+        Assert.assertEquals(updatedBookingRequest.getTotalprice(), updatedBookingResponse.getTotalprice());
+        Assert.assertEquals(updatedBookingRequest.isDepositpaid(), updatedBookingResponse.isDepositpaid());
+        Assert.assertEquals(updatedBookingRequest.getBookingdates().getCheckin(), updatedBookingResponse.getBookingdates().getCheckin());
+        Assert.assertEquals(updatedBookingRequest.getBookingdates().getCheckout(), updatedBookingResponse.getBookingdates().getCheckout());
+        Assert.assertEquals(updatedBookingRequest.getAdditionalneeds(), updatedBookingResponse.getAdditionalneeds());
     }
 
 }

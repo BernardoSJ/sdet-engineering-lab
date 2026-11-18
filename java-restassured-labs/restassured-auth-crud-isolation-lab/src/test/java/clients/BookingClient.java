@@ -42,4 +42,15 @@ public class BookingClient {
                 .post(BOOKING_ENDPOINT);
     }
 
+    public Response updateBooking(int bookingId, BookingRequest bookingPayload, String token){
+        return given()
+                .spec(requestSpecification)
+                .contentType(ContentType.JSON)
+                .pathParam("bookingid",bookingId)
+                .cookie("token", token)
+                .body(bookingPayload)
+                .when()
+                .put(BOOKING_ENDPOINT + "/{bookingid}");
+    }
+
 }

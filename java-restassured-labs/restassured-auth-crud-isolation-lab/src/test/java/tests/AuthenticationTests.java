@@ -36,10 +36,9 @@ public class AuthenticationTests {
     public void invalidAuthentication(){
         AuthPayload authPayload = new AuthPayload("admin", "password12");
 
-        Response response = authClient.authenticate(authPayload);
-
-        response.then()
-                .spec(apiSpecifications.successfulJsonResponse());
+        Response response = authClient.authenticate(authPayload)
+                .then()
+                .spec(apiSpecifications.successfulJsonResponse()).extract().response();
 
         String reason = response.jsonPath().getString("reason");
         String token = response.jsonPath().getString("token");

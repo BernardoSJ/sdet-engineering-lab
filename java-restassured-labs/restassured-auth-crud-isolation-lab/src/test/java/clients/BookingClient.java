@@ -3,8 +3,9 @@ package clients;
 import io.restassured.http.ContentType;
 import io.restassured.response.Response;
 import io.restassured.specification.RequestSpecification;
-import io.restassured.specification.ResponseSpecification;
 import models.BookingRequest;
+
+import java.util.Map;
 
 import static io.restassured.RestAssured.given;
 
@@ -51,6 +52,17 @@ public class BookingClient {
                 .body(bookingPayload)
                 .when()
                 .put(BOOKING_ENDPOINT + "/{bookingid}");
+    }
+
+    public Response partiallyUpdateBooking(int bookingId, Map<String, Object> partialPayload, String token){
+        return given()
+                .spec(requestSpecification)
+                .contentType(ContentType.JSON)
+                .pathParam("bookingid",bookingId)
+                .cookie("token", token)
+                .body(partialPayload)
+                .when()
+                .patch(BOOKING_ENDPOINT + "/{bookingid}");
     }
 
 }

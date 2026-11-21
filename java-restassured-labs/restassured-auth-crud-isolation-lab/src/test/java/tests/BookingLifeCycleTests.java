@@ -14,6 +14,7 @@ import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -206,5 +207,66 @@ public class BookingLifeCycleTests {
         Assert.assertEquals(updatedBookingRequest.getBookingdates().getCheckout(), updatedBookingResponse.getBookingdates().getCheckout());
         Assert.assertEquals(updatedBookingRequest.getAdditionalneeds(), updatedBookingResponse.getAdditionalneeds());
     }
+
+    @Test(description = "Partial update to an existing booking")
+    public void partialUpdateBooking(){
+        BookingDates initialDates = new BookingDates("2026-12-10", "2026-12-15");
+
+        BookingRequest initialBookingRequest = new BookingRequest("Alex",
+                "Smith", 250, true, initialDates, "Breakfast");
+        Map<String, Object> partialPayload = new HashMap<>();
+        partialPayload.put("firstname", "Michael");
+        partialPayload.put("totalprice", 350);
+
+
+        AuthPayload authPayload = new AuthPayload("admin", "password123");
+        String token = authClient.authenticate(authPayload)
+                .then()
+                .spec(apiSpecifications.successfulJsonResponse())
+                .extract().response().jsonPath().getString("token");
+
+        Assert.assertNotNull(token,  "Authentication token is missing");
+        Assert.assertFalse(token.isBlank(), "Authentication token is blank");
+
+        Response bookingCreated = bookingClient.createBooking(initialBookingRequest)
+                .then()
+                .spec(apiSpecifications.successfulJsonResponse())
+                .extract().response();
+
+        BookingCreatedResponse bookingCreatedResponse = bookingCreated.as(BookingCreatedResponse.class);
+        int createdBookingId = bookingCreatedResponse.getBookingid();
+        Assert.assertTrue(createdBookingId > 0, "Invalid booking ID returned after creation");
+
+        Response partiallyUpdatedBooking = bookingClient.partiallyUpdateBooking(createdBookingId, partialPayload, token)
+                .then()
+                .spec(apiSpecifications.successfulJsonResponse())
+                .extract().response();
+
+        BookingRequest partiallyUpdatedObject = partiallyUpdatedBooking.as(BookingRequest.class);
+        Assert.assertEquals(partiallyUpdatedObject.getFirstname(), partialPayload.get("firstname"));
+        Assert.assertEquals(partiallyUpdatedObject.getTotalprice(), ((Number) partialPayload.get("totalprice")).intValue());
+
+        Response retrievedBooking = bookingClient.getBookingById(createdBookingId)
+                .then()
+                .spec(apiSpecifications.successfulJsonResponse())
+                .extract().response();
+
+        BookingRequest updatedBookingResponse = retrievedBooking.as(BookingRequest.class);
+
+        Assert.assertNotNull(updatedBookingResponse, "Retrieved booking could not be deserialized");
+        Assert.assertNotNull(updatedBookingResponse.getBookingdates(), "Retrieved booking dates are missing");
+
+        Assert.assertEquals(updatedBookingResponse.getFirstname(), partialPayload.get("firstname"));
+        Assert.assertEquals(updatedBookingResponse.getTotalprice(), partialPayload.get("totalprice"));
+
+        Assert.assertEquals(updatedBookingResponse.getLastname(), initialBookingRequest.getLastname());
+        Assert.assertEquals(updatedBookingResponse.isDepositpaid(), initialBookingRequest.isDepositpaid());
+        Assert.assertEquals(updatedBookingResponse.getBookingdates().getCheckin(), initialBookingRequest.getBookingdates().getCheckin());
+        Assert.assertEquals(updatedBookingResponse.getBookingdates().getCheckout(), initialBookingRequest.getBookingdates().getCheckout());
+        Assert.assertEquals(updatedBookingResponse.getAdditionalneeds(), initialBookingRequest.getAdditionalneeds());
+
+    }
+
+
 
 }

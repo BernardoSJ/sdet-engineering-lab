@@ -267,6 +267,39 @@ public class BookingLifeCycleTests {
 
     }
 
+    @Test(description = "Delete an existing booking")
+    public void deleteBooking(){
+        BookingDates initialDates = new BookingDates("2026-12-10", "2026-12-15");
+        BookingRequest bookingRequest = new BookingRequest("Alex",
+                "Smith", 250, true, initialDates, "Breakfast");
+
+        AuthPayload authPayload = new AuthPayload("admin", "password123");
+        String token = authClient.authenticate(authPayload)
+                .then()
+                .spec(apiSpecifications.successfulJsonResponse())
+                .extract().response().jsonPath().getString("token");
+        Assert.assertNotNull(token,  "Authentication token is missing");
+        Assert.assertFalse(token.isBlank(), "Authentication token is blank");
+
+        Response bookingCreated = bookingClient.createBooking(bookingRequest)
+                .then()
+                .spec(apiSpecifications.successfulJsonResponse())
+                .extract().response();
+
+        BookingCreatedResponse bookingCreatedResponse = bookingCreated.as(BookingCreatedResponse.class);
+        int createdBookingId = bookingCreatedResponse.getBookingid();
+        Assert.assertTrue(createdBookingId > 0, "Invalid booking ID returned after creation");
+
+        Response deleteResponse = bookingClient.deleteBooking(createdBookingId, token);
+        Assert.assertEquals(deleteResponse.statusCode(), 201);
+        Assert.assertEquals(deleteResponse.body().asString(), "Created");
+
+        Response retrievedBooking = bookingClient.getBookingById(createdBookingId)
+                .then()
+                .extract().response();
+        Assert.assertEquals(retrievedBooking.statusCode(), 404);
+    }
+
 
 
 }

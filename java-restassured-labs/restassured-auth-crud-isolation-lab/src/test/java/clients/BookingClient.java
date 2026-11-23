@@ -65,4 +65,13 @@ public class BookingClient {
                 .patch(BOOKING_ENDPOINT + "/{bookingid}");
     }
 
+    public Response deleteBooking(int bookingId, String token){
+        return given()
+                .spec(requestSpecification)
+                .pathParam("bookingid", bookingId)
+                .cookie("token", token)
+                .when()
+                .delete(BOOKING_ENDPOINT + "/{bookingid}");
+    }
+
 }

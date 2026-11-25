@@ -11,6 +11,7 @@ import models.BookingCreatedResponse;
 import models.BookingDates;
 import models.BookingRequest;
 import org.testng.Assert;
+import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
@@ -25,8 +26,13 @@ public class BookingLifeCycleTests {
     BookingClient bookingClient;
     ApiSpecifications apiSpecifications;
 
+    private int bookingId;
+    private String token;
+
     @BeforeMethod
     public void setUpRequestAndResponse(){
+        bookingId = 0;
+        token = "";
         apiSpecifications = new ApiSpecifications();
         RequestSpecification requestSpecification = apiSpecifications.setUpRequest();
         bookingClient = new BookingClient(requestSpecification);
@@ -96,11 +102,15 @@ public class BookingLifeCycleTests {
         BookingRequest bookingRequest = new BookingRequest("Alex",
                 "Smith", 250, true, bookingDates, "Breakfast");
 
+        AuthPayload authPayload = new AuthPayload("admin", "password123");
+        token = authClient.authenticate(authPayload)
+                .then()
+                .spec(apiSpecifications.successfulJsonResponse())
+                .extract().response().jsonPath().getString("token");
         Response response = bookingClient.createBooking(bookingRequest)
                 .then()
                 .spec(apiSpecifications.successfulJsonResponse())
                 .extract().response();
-
 
         BookingCreatedResponse createdBooking = response.as(BookingCreatedResponse.class);
 
@@ -108,6 +118,7 @@ public class BookingLifeCycleTests {
 
         BookingRequest actualBooking = createdBooking.getBooking();
         Assert.assertTrue(createdBooking.getBookingid() > 0, "Booking ID must be positive");
+        bookingId = createdBooking.getBookingid();
         Assert.assertEquals(actualBooking.getFirstname(), bookingRequest.getFirstname());
         Assert.assertEquals(actualBooking.getLastname(), bookingRequest.getLastname());
         Assert.assertEquals(actualBooking.getTotalprice(), bookingRequest.getTotalprice());
@@ -125,17 +136,23 @@ public class BookingLifeCycleTests {
         BookingRequest bookingRequest = new BookingRequest("Alex",
                 "Smith", 250, true, bookingDates, "Breakfast");
 
+        AuthPayload authPayload = new AuthPayload("admin", "password123");
+        String token = authClient.authenticate(authPayload)
+                .then()
+                .spec(apiSpecifications.successfulJsonResponse())
+                .extract().response().jsonPath().getString("token");
+
         Response bookingCreated = bookingClient.createBooking(bookingRequest)
                 .then()
                 .spec(apiSpecifications.successfulJsonResponse())
                 .extract().response();
 
         BookingCreatedResponse bookingCreatedResponse = bookingCreated.as(BookingCreatedResponse.class);
-        int createdBookingId = bookingCreatedResponse.getBookingid();
+        bookingId = bookingCreatedResponse.getBookingid();
 
-        Assert.assertTrue(createdBookingId > 0, "Invalid booking ID returned after creation");
+        Assert.assertTrue(bookingId > 0, "Invalid booking ID returned after creation");
 
-        Response retrieveCreatedBooking = bookingClient.getBookingById(createdBookingId)
+        Response retrieveCreatedBooking = bookingClient.getBookingById(bookingId)
                 .then()
                 .spec(apiSpecifications.successfulJsonResponse())
                 .extract().response();
@@ -181,7 +198,7 @@ public class BookingLifeCycleTests {
         BookingCreatedResponse bookingCreatedResponse = bookingCreated.as(BookingCreatedResponse.class);
         int createdBookingId = bookingCreatedResponse.getBookingid();
         Assert.assertTrue(createdBookingId > 0, "Invalid booking ID returned after creation");
-
+        bookingId = createdBookingId;
         Response updatedBooking = bookingClient.updateBooking(createdBookingId, updatedBookingRequest, token)
                 .then()
                 .spec(apiSpecifications.successfulJsonResponse())
@@ -236,7 +253,7 @@ public class BookingLifeCycleTests {
         BookingCreatedResponse bookingCreatedResponse = bookingCreated.as(BookingCreatedResponse.class);
         int createdBookingId = bookingCreatedResponse.getBookingid();
         Assert.assertTrue(createdBookingId > 0, "Invalid booking ID returned after creation");
-
+        bookingId = createdBookingId;
         Response partiallyUpdatedBooking = bookingClient.partiallyUpdateBooking(createdBookingId, partialPayload, token)
                 .then()
                 .spec(apiSpecifications.successfulJsonResponse())
@@ -289,7 +306,7 @@ public class BookingLifeCycleTests {
         BookingCreatedResponse bookingCreatedResponse = bookingCreated.as(BookingCreatedResponse.class);
         int createdBookingId = bookingCreatedResponse.getBookingid();
         Assert.assertTrue(createdBookingId > 0, "Invalid booking ID returned after creation");
-
+        bookingId = createdBookingId;
         Response deleteResponse = bookingClient.deleteBooking(createdBookingId, token);
         Assert.assertEquals(deleteResponse.statusCode(), 201);
         Assert.assertEquals(deleteResponse.body().asString(), "Created");
@@ -298,6 +315,90 @@ public class BookingLifeCycleTests {
                 .then()
                 .extract().response();
         Assert.assertEquals(retrievedBooking.statusCode(), 404);
+        bookingId = 0;
+    }
+
+    @Test(description = "Test Isolation Demo")
+    public void testIsolationDemo(){
+        int createdBookingId = 0;
+        Throwable primaryFailure = null;
+        try{
+            BookingDates initialDates = new BookingDates("2026-12-10", "2026-12-15");
+
+            BookingRequest initialBookingRequest = new BookingRequest("Alex",
+                    "Smith", 250, true, initialDates, "Breakfast");
+            Map<String, Object> partialPayload = new HashMap<>();
+            partialPayload.put("firstname", "Michael");
+            partialPayload.put("totalprice", 350);
+
+
+            AuthPayload authPayload = new AuthPayload("admin", "password123");
+            token = authClient.authenticate(authPayload)
+                    .then()
+                    .spec(apiSpecifications.successfulJsonResponse())
+                    .extract().response().jsonPath().getString("token");
+
+            Assert.assertNotNull(token,  "Authentication token is missing");
+            Assert.assertFalse(token.isBlank(), "Authentication token is blank");
+
+            Response bookingCreated = bookingClient.createBooking(initialBookingRequest)
+                    .then()
+                    .spec(apiSpecifications.successfulJsonResponse())
+                    .extract().response();
+
+            BookingCreatedResponse bookingCreatedResponse = bookingCreated.as(BookingCreatedResponse.class);
+            createdBookingId = bookingCreatedResponse.getBookingid();
+            Assert.assertTrue(createdBookingId > 0, "Invalid booking ID returned after creation");
+            bookingId = createdBookingId;
+            Response partiallyUpdatedBooking = bookingClient.partiallyUpdateBooking(createdBookingId, partialPayload, token)
+                    .then()
+                    .spec(apiSpecifications.successfulJsonResponse())
+                    .extract().response();
+
+            BookingRequest partiallyUpdatedObject = partiallyUpdatedBooking.as(BookingRequest.class);
+            Assert.assertEquals(partiallyUpdatedObject.getFirstname(), partialPayload.get("firstname"));
+            Assert.assertEquals(partiallyUpdatedObject.getTotalprice(), partialPayload.get("totalprice"), "Total Price is not correct");
+
+
+        }catch(Throwable failure) {
+            primaryFailure = failure;
+            throw failure;
+        }finally{
+
+            try{
+                Response deleteResponse = bookingClient.deleteBooking(createdBookingId, token);
+                Assert.assertEquals(deleteResponse.statusCode(), 201);
+                Assert.assertEquals(deleteResponse.body().asString(), "Created");
+
+                Response retrievedBooking = bookingClient.getBookingById(createdBookingId)
+                        .then()
+                        .extract().response();
+                Assert.assertEquals(retrievedBooking.statusCode(), 404);
+                bookingId = 0;
+            }catch(Throwable cleanupFailure){
+                if (primaryFailure != null) {
+                    primaryFailure.addSuppressed(cleanupFailure);
+                } else {
+                    throw cleanupFailure;
+                }
+            }
+        }
+
+
+    }
+
+    @AfterMethod(alwaysRun = true)
+    public void cleanUp(){
+        if(bookingId > 0 && !token.isEmpty()){
+            Response deleteResponse = bookingClient.deleteBooking(bookingId, token);
+            Assert.assertEquals(deleteResponse.statusCode(), 201);
+            Assert.assertEquals(deleteResponse.body().asString(), "Created");
+
+            Response retrievedBooking = bookingClient.getBookingById(bookingId)
+                    .then()
+                    .extract().response();
+            Assert.assertEquals(retrievedBooking.statusCode(), 404);
+        }
     }
 
 

@@ -39,6 +39,20 @@ public class BookingLifeCycleTests {
         authClient = new AuthClient(requestSpecification);
     }
 
+    private void authenticateUser() {
+        AuthPayload authPayload = new AuthPayload("admin", "password123");
+
+        token = authClient.authenticate(authPayload)
+                .then()
+                .spec(apiSpecifications.successfulJsonResponse())
+                .extract()
+                .jsonPath()
+                .getString("token");
+
+        Assert.assertNotNull(token, "Authentication token is missing");
+        Assert.assertFalse(token.isBlank(), "Authentication token is blank");
+    }
+
     @Test(description = "Get all bookings and verify the response")
     public void getAllBookings(){
         Response response = bookingClient.getAllBookings()
@@ -102,11 +116,7 @@ public class BookingLifeCycleTests {
         BookingRequest bookingRequest = new BookingRequest("Alex",
                 "Smith", 250, true, bookingDates, "Breakfast");
 
-        AuthPayload authPayload = new AuthPayload("admin", "password123");
-        token = authClient.authenticate(authPayload)
-                .then()
-                .spec(apiSpecifications.successfulJsonResponse())
-                .extract().response().jsonPath().getString("token");
+        authenticateUser();
         Response response = bookingClient.createBooking(bookingRequest)
                 .then()
                 .spec(apiSpecifications.successfulJsonResponse())
@@ -136,11 +146,7 @@ public class BookingLifeCycleTests {
         BookingRequest bookingRequest = new BookingRequest("Alex",
                 "Smith", 250, true, bookingDates, "Breakfast");
 
-        AuthPayload authPayload = new AuthPayload("admin", "password123");
-        String token = authClient.authenticate(authPayload)
-                .then()
-                .spec(apiSpecifications.successfulJsonResponse())
-                .extract().response().jsonPath().getString("token");
+        authenticateUser();
 
         Response bookingCreated = bookingClient.createBooking(bookingRequest)
                 .then()
@@ -181,14 +187,7 @@ public class BookingLifeCycleTests {
         BookingRequest updatedBookingRequest = new BookingRequest("Daniel",
                 "Johnson", 450, false, updatedDates, "Parking");
 
-        AuthPayload authPayload = new AuthPayload("admin", "password123");
-        String token = authClient.authenticate(authPayload)
-                .then()
-                .spec(apiSpecifications.successfulJsonResponse())
-                .extract().response().jsonPath().getString("token");
-
-        Assert.assertNotNull(token,  "Authentication token is missing");
-        Assert.assertFalse(token.isBlank(), "Authentication token is blank");
+        authenticateUser();
 
         Response bookingCreated = bookingClient.createBooking(initialBookingRequest)
                 .then()
@@ -236,14 +235,7 @@ public class BookingLifeCycleTests {
         partialPayload.put("totalprice", 350);
 
 
-        AuthPayload authPayload = new AuthPayload("admin", "password123");
-        String token = authClient.authenticate(authPayload)
-                .then()
-                .spec(apiSpecifications.successfulJsonResponse())
-                .extract().response().jsonPath().getString("token");
-
-        Assert.assertNotNull(token,  "Authentication token is missing");
-        Assert.assertFalse(token.isBlank(), "Authentication token is blank");
+        authenticateUser();
 
         Response bookingCreated = bookingClient.createBooking(initialBookingRequest)
                 .then()
@@ -290,13 +282,7 @@ public class BookingLifeCycleTests {
         BookingRequest bookingRequest = new BookingRequest("Alex",
                 "Smith", 250, true, initialDates, "Breakfast");
 
-        AuthPayload authPayload = new AuthPayload("admin", "password123");
-        String token = authClient.authenticate(authPayload)
-                .then()
-                .spec(apiSpecifications.successfulJsonResponse())
-                .extract().response().jsonPath().getString("token");
-        Assert.assertNotNull(token,  "Authentication token is missing");
-        Assert.assertFalse(token.isBlank(), "Authentication token is blank");
+        authenticateUser();
 
         Response bookingCreated = bookingClient.createBooking(bookingRequest)
                 .then()
@@ -318,87 +304,66 @@ public class BookingLifeCycleTests {
         bookingId = 0;
     }
 
-    @Test(description = "Test Isolation Demo")
-    public void testIsolationDemo(){
-        int createdBookingId = 0;
-        Throwable primaryFailure = null;
-        try{
-            BookingDates initialDates = new BookingDates("2026-12-10", "2026-12-15");
+    @Test(description = "Verify booking update without authentication")
+    public void updateBookingWithoutAuthentication() {
+        BookingDates initialDates = new BookingDates("2026-12-10", "2026-12-15");
+        BookingDates updatedDates = new BookingDates("2026-12-12", "2026-12-18");
 
-            BookingRequest initialBookingRequest = new BookingRequest("Alex",
-                    "Smith", 250, true, initialDates, "Breakfast");
-            Map<String, Object> partialPayload = new HashMap<>();
-            partialPayload.put("firstname", "Michael");
-            partialPayload.put("totalprice", 350);
+        BookingRequest initialBookingRequest = new BookingRequest("Alex",
+                "Smith", 250, true, initialDates, "Breakfast");
+        BookingRequest updatedBookingRequest = new BookingRequest("Daniel",
+                "Johnson", 450, false, updatedDates, "Parking");
 
+        authenticateUser();
 
-            AuthPayload authPayload = new AuthPayload("admin", "password123");
-            token = authClient.authenticate(authPayload)
-                    .then()
-                    .spec(apiSpecifications.successfulJsonResponse())
-                    .extract().response().jsonPath().getString("token");
+        Response bookingCreated = bookingClient.createBooking(initialBookingRequest)
+                .then()
+                .spec(apiSpecifications.successfulJsonResponse())
+                .extract().response();
+        BookingCreatedResponse bookingCreatedResponse = bookingCreated.as(BookingCreatedResponse.class);
+        int createdBookingId = bookingCreatedResponse.getBookingid();
+        Assert.assertTrue(createdBookingId > 0, "Invalid booking ID returned after creation");
+        bookingId = createdBookingId;
+        Response updatedBooking = bookingClient.updateBooking(createdBookingId, updatedBookingRequest);
+        Assert.assertEquals(updatedBooking.statusCode(), 403, "Unauthenticated booking update should be rejected");
 
-            Assert.assertNotNull(token,  "Authentication token is missing");
-            Assert.assertFalse(token.isBlank(), "Authentication token is blank");
+        Response retrievedBooking = bookingClient.getBookingById(createdBookingId)
+                .then()
+                .spec(apiSpecifications.successfulJsonResponse())
+                .extract().response();
 
-            Response bookingCreated = bookingClient.createBooking(initialBookingRequest)
-                    .then()
-                    .spec(apiSpecifications.successfulJsonResponse())
-                    .extract().response();
+        BookingRequest updatedBookingResponse = retrievedBooking.as(BookingRequest.class);
 
-            BookingCreatedResponse bookingCreatedResponse = bookingCreated.as(BookingCreatedResponse.class);
-            createdBookingId = bookingCreatedResponse.getBookingid();
-            Assert.assertTrue(createdBookingId > 0, "Invalid booking ID returned after creation");
-            bookingId = createdBookingId;
-            Response partiallyUpdatedBooking = bookingClient.partiallyUpdateBooking(createdBookingId, partialPayload, token)
-                    .then()
-                    .spec(apiSpecifications.successfulJsonResponse())
-                    .extract().response();
+        Assert.assertNotNull(updatedBookingResponse, "Retrieved booking could not be deserialized");
+        Assert.assertNotNull(updatedBookingResponse.getBookingdates(), "Retrieved booking dates are missing");
 
-            BookingRequest partiallyUpdatedObject = partiallyUpdatedBooking.as(BookingRequest.class);
-            Assert.assertEquals(partiallyUpdatedObject.getFirstname(), partialPayload.get("firstname"));
-            Assert.assertEquals(partiallyUpdatedObject.getTotalprice(), partialPayload.get("totalprice"), "Total Price is not correct");
-
-
-        }catch(Throwable failure) {
-            primaryFailure = failure;
-            throw failure;
-        }finally{
-
-            try{
-                Response deleteResponse = bookingClient.deleteBooking(createdBookingId, token);
-                Assert.assertEquals(deleteResponse.statusCode(), 201);
-                Assert.assertEquals(deleteResponse.body().asString(), "Created");
-
-                Response retrievedBooking = bookingClient.getBookingById(createdBookingId)
-                        .then()
-                        .extract().response();
-                Assert.assertEquals(retrievedBooking.statusCode(), 404);
-                bookingId = 0;
-            }catch(Throwable cleanupFailure){
-                if (primaryFailure != null) {
-                    primaryFailure.addSuppressed(cleanupFailure);
-                } else {
-                    throw cleanupFailure;
-                }
-            }
-        }
-
-
+        Assert.assertEquals(updatedBookingResponse.getFirstname(), initialBookingRequest.getFirstname());
+        Assert.assertEquals(updatedBookingResponse.getLastname(), initialBookingRequest.getLastname());
+        Assert.assertEquals(updatedBookingResponse.getTotalprice(), initialBookingRequest.getTotalprice());
+        Assert.assertEquals(updatedBookingResponse.isDepositpaid(), initialBookingRequest.isDepositpaid());
+        Assert.assertEquals(updatedBookingResponse.getBookingdates().getCheckin(), initialBookingRequest.getBookingdates().getCheckin());
+        Assert.assertEquals(updatedBookingResponse.getBookingdates().getCheckout(), initialBookingRequest.getBookingdates().getCheckout());
+        Assert.assertEquals(updatedBookingResponse.getAdditionalneeds(), initialBookingRequest.getAdditionalneeds());
     }
 
     @AfterMethod(alwaysRun = true)
     public void cleanUp(){
-        if(bookingId > 0 && !token.isEmpty()){
-            Response deleteResponse = bookingClient.deleteBooking(bookingId, token);
-            Assert.assertEquals(deleteResponse.statusCode(), 201);
-            Assert.assertEquals(deleteResponse.body().asString(), "Created");
-
-            Response retrievedBooking = bookingClient.getBookingById(bookingId)
-                    .then()
-                    .extract().response();
-            Assert.assertEquals(retrievedBooking.statusCode(), 404);
+        if (bookingId <= 0) {
+            return;
         }
+
+        Assert.assertNotNull(token, "Cleanup token is missing");
+        Assert.assertFalse(token.isBlank(), "Cleanup token is blank");
+
+        Response deleteResponse = bookingClient.deleteBooking(bookingId, token);
+        Assert.assertEquals(deleteResponse.statusCode(), 201, "Cleanup failed for booking ID: " + bookingId);
+
+        Response retrievedBooking = bookingClient.getBookingById(bookingId);
+
+        Assert.assertEquals(retrievedBooking.statusCode(), 404, "Booking still accessible after cleanup: " + bookingId
+        );
+        System.out.println("[CLEANUP] Booking " + bookingId + " deleted");
+        bookingId = 0;
     }
 
 

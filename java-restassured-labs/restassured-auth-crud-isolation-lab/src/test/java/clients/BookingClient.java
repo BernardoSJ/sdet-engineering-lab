@@ -54,6 +54,16 @@ public class BookingClient {
                 .put(BOOKING_ENDPOINT + "/{bookingid}");
     }
 
+    public Response updateBooking(int bookingId, BookingRequest bookingPayload){
+        return given()
+                .spec(requestSpecification)
+                .contentType(ContentType.JSON)
+                .pathParam("bookingid",bookingId)
+                .body(bookingPayload)
+                .when()
+                .put(BOOKING_ENDPOINT + "/{bookingid}");
+    }
+
     public Response partiallyUpdateBooking(int bookingId, Map<String, Object> partialPayload, String token){
         return given()
                 .spec(requestSpecification)
